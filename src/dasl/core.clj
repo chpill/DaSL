@@ -39,9 +39,7 @@
 
   (s/conform ::value-type [:string]))
 
-(s/def ::single-value-type
-  (s/cat :cardinality-indicator (s/? #{:many})
-         :value-type ::value-type))
+(s/def ::single-value-type ::value-type)
 
 (s/def ::tuple-value-type
   (s/cat :tuple-indicator #{:tuple}
@@ -49,6 +47,7 @@
 
 (s/def ::abbreviated-datomic-attribute-schema
   (s/cat :uniqueness-indicator (s/? #{:unique :identity})
+         :cardinality-indicator #{:one :many}
          :value (s/alt :single ::single-value-type
                        :tuple ::tuple-value-type)
          :doc (s/? string?)))
@@ -56,8 +55,8 @@
 (comment (s/exercise ::abbreviated-datomic-attribute-schema)
          (s/exercise ::abbreviated-datomic-attribute-schema))
 
-(comment (s/valid? ::abbreviated-datomic-attribute-schema [:tuple [:a/b :c/d]])
-         (s/valid? ::abbreviated-datomic-attribute-schema [:string :identity "email of the user"])
+(comment (s/valid? ::abbreviated-datomic-attribute-schema [:one :tuple [:a/b :c/d]])
+         (s/valid? ::abbreviated-datomic-attribute-schema [:identity :one :string "email of the user"])
          (s/valid? ::abbreviated-datomic-attribute-schema [:many :ref "plop"]))
 
 (s/def ::whole
@@ -65,19 +64,18 @@
             ::abbreviated-datomic-attribute-schema))
 
 
-(defn parse [m]
+(defn expand [m]
   (into #{}
-        (map (fn [[k {:keys [uniqueness-indicator value doc]}]]
+        (map (fn [[k {:keys [uniqueness-indicator cardinality-indicator value doc]}]]
                (let [[value-family v] value]
                  (-> (case value-family
                        :tuple  {:db/valueType :db.type/tuple
-                                :db/tupleAttrs  (:tuple-composition v)
-                                :db/cardinality :db.cardinality/one}
-                       :single {:db/valueType (first (:value-type v))
-                                :db/cardinality (if (= (:cardinality-indicator v) :many)
-                                                  :db.cardinality/many
-                                                  :db.cardinality/one)})
+                                :db/tupleAttrs  (:tuple-composition v)}
+                       :single {:db/valueType (first v)})
                      (assoc :db/ident k)
+                     (assoc :db/cardinality (case cardinality-indicator
+                                              :one :db.cardinality/one
+                                              :many :db.cardinality/many))
                      (cond->
                          uniqueness-indicator (assoc :db/unique
                                                      (case uniqueness-indicator
@@ -86,3 +84,6 @@
                          doc (assoc :db/doc doc))))))
         (s/conform ::whole m)))
 
+
+;; TODO
+(defn contract [v])

@@ -54,24 +54,24 @@
 
 
 (def datomic-doc-tuple-example-schema-with-dasl
-  {:student/email [:identity :string]
-   :student/first [:string]
-   :student/last  [:string]
+  {:student/email [:identity :one :string]
+   :student/first [:one :string]
+   :student/last  [:one :string]
 
-   :course/id   [:identity :string]
-   :course/name [:string]
+   :course/id   [:identity :one :string]
+   :course/name [:one :string]
 
-   :semester/year   [:long]
-   :semester/season [:keyword]
-   :semester/year+season [:identity :tuple [:semester/year :semester/season]]
+   :semester/year   [:one :long]
+   :semester/season [:one :keyword]
+   :semester/year+season [:identity :one :tuple [:semester/year :semester/season]]
 
-   :reg/course   [:ref]
-   :reg/semester [:ref]
-   :reg/student  [:ref]
-   :reg/course+semester+student [:identity :tuple [:reg/course :reg/semester :reg/student]]})
+   :reg/course   [:one :ref]
+   :reg/semester [:one :ref]
+   :reg/student  [:one :ref]
+   :reg/course+semester+student [:identity :one :tuple [:reg/course :reg/semester :reg/student]]})
 
 
 
 (deftest tuple-schema-example-from-datomic-documentation
-  (is (= (dasl/parse datomic-doc-tuple-example-schema-with-dasl)
-         datomic-doc-tuple-example-vanilla-schema)))
+  (is (= datomic-doc-tuple-example-vanilla-schema
+         (dasl/expand datomic-doc-tuple-example-schema-with-dasl))))
