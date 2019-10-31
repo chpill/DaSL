@@ -22,24 +22,22 @@
 (def ref-type :db.type/ref)
 (def tuple-type :db.type/tuple)
 
-;; TODO this is ugly... is there a way to mechanically derive this spec from the
-;; set of scalars + the ref-type values? - chpill 2019/10/27
-(s/def ::value-type
-  (s/alt :db.type/bigdec   #{:bigdec}
-         :db.type/bigint   #{:bigint}
-         :db.type/boolean  #{:boolean}
-         :db.type/double   #{:double}
-         :db.type/float    #{:float}
-         :db.type/instant  #{:instant}
-         :db.type/keyword  #{:keyword}
-         :db.type/long     #{:long}
-         :db.type/ref      #{:ref}
-         :db.type/string   #{:string}
-         :db.type/symbol   #{:symbol}
-         :db.type/uuid     #{:uuid}))
+(def value-types (conj scalars ref-type tuple-type))
 
-(comment (s/conform ::value-type [:string]))
+;; See http://insideclojure.org/2019/08/10/journal/
+;; difference: spec* as been renamed to resolve-spec
+(s/register ::value-type
+            (s/resolve-spec
+             {:clojure.spec/op `s/alt
+              :keys (vec value-types)
+              :specs (mapv #(-> % name keyword hash-set)
+                            value-types)}))
 
+(comment
+  ;; To check what it would look like if it was written by hand
+  (s/form ::value-type)
+
+  (s/conform ::value-type [:string]))
 
 (s/def ::single-value-type
   (s/cat :cardinality-indicator (s/? #{:many})
