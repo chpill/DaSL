@@ -6,32 +6,33 @@
   (s/and keyword?
          #(string? (namespace %))))
 
+(def scalars #{:bigdec
+               :bigint
+               :boolean
+               :double
+               :float
+               :instant
+               :keyword
+               :long
+               :string
+               :symbol
+               :uuid})
 
-(def scalars #{:db.type/bigdec
-               :db.type/bigint
-               :db.type/boolean
-               :db.type/double
-               :db.type/float
-               :db.type/instant
-               :db.type/keyword
-               :db.type/long
-               :db.type/string
-               :db.type/symbol
-               :db.type/uuid})
-
-(def ref-type :db.type/ref)
-(def tuple-type :db.type/tuple)
+(def ref-type :ref)
+(def tuple-type :tuple)
 
 (def value-types (conj scalars ref-type tuple-type))
 
 ;; See http://insideclojure.org/2019/08/10/journal/
 ;; difference: spec* as been renamed to resolve-spec
+;; TODO is this really useful though?? We can probably just build a map and use
+;; that in the expand fn...
 (s/register ::value-type
             (s/resolve-spec
              {:clojure.spec/op `s/alt
-              :keys (vec value-types)
-              :specs (mapv #(-> % name keyword hash-set)
-                            value-types)}))
+              :keys (mapv #(->> % name (keyword "db.type"))
+                          value-types)
+              :specs (mapv hash-set value-types)}))
 
 (comment
   ;; To check what it would look like if it was written by hand
