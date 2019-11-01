@@ -2,9 +2,11 @@
   (:require [clojure.spec-alpha2 :as s]))
 
 
-(s/def ::namespaced-keyword
-  (s/and keyword?
-         #(string? (namespace %))))
+(defn mapping [ks ns-string]
+  (zipmap ks
+          (mapv #(->> % name (keyword ns-string))
+                ks)))
+
 
 (def scalars #{:bigdec
                :bigint
@@ -17,44 +19,37 @@
                :string
                :symbol
                :uuid})
-
 (def ref-type :ref)
+(def scalars+ref (conj scalars ref-type))
 (def tuple-type :tuple)
+(def tuples #{:tuple})
 
 (def value-types (conj scalars ref-type tuple-type))
+(def type-mapping (mapping value-types "db.type"))
 
-;; See http://insideclojure.org/2019/08/10/journal/
-;; difference: spec* as been renamed to resolve-spec
-;; TODO is this really useful though?? We can probably just build a map and use
-;; that in the expand fn...
-(s/register ::value-type
-            (s/resolve-spec
-             {:clojure.spec/op `s/alt
-              :keys (mapv #(->> % name (keyword "db.type"))
-                          value-types)
-              :specs (mapv hash-set value-types)}))
+(def cardinalities #{:one :many})
+(def cardinality-mapping (mapping cardinalities "db.cardinality"))
 
-(comment
-  ;; To check what it would look like if it was written by hand
-  (s/form ::value-type)
+(def uniquenesses #{:unique :identity})
+(def uniqueness-mapping (mapping uniquenesses "db.unique"))
 
-  (s/conform ::value-type [:string]))
 
-(s/def ::single-value-type ::value-type)
+(s/def ::namespaced-keyword
+  (s/and keyword?
+         #(string? (namespace %))))
 
 (s/def ::tuple-value-type
   (s/cat :tuple-indicator #{:tuple}
          :tuple-composition (s/coll-of ::namespaced-keyword)))
 
 (s/def ::abbreviated-datomic-attribute-schema
-  (s/cat :uniqueness-indicator (s/? #{:unique :identity})
-         :cardinality-indicator #{:one :many}
-         :value (s/alt :single ::single-value-type
+  (s/cat :uniqueness (s/? uniquenesses)
+         :cardinality cardinalities
+         :value (s/alt :single scalars+ref
                        :tuple ::tuple-value-type)
          :doc (s/? string?)))
 
-(comment (s/exercise ::abbreviated-datomic-attribute-schema)
-         (s/exercise ::abbreviated-datomic-attribute-schema))
+(comment (s/exercise ::abbreviated-datomic-attribute-schema))
 
 (comment (s/valid? ::abbreviated-datomic-attribute-schema [:one :tuple [:a/b :c/d]])
          (s/valid? ::abbreviated-datomic-attribute-schema [:identity :one :string "email of the user"])
@@ -64,24 +59,18 @@
   (s/map-of ::namespaced-keyword
             ::abbreviated-datomic-attribute-schema))
 
-
 (defn expand [m]
   (into #{}
-        (map (fn [[k {:keys [uniqueness-indicator cardinality-indicator value doc]}]]
+        (map (fn [[k {:keys [uniqueness cardinality value doc]}]]
                (let [[value-family v] value]
-                 (-> (case value-family
-                       :tuple  {:db/valueType :db.type/tuple
-                                :db/tupleAttrs  (:tuple-composition v)}
-                       :single {:db/valueType (first v)})
-                     (assoc :db/ident k)
-                     (assoc :db/cardinality (case cardinality-indicator
-                                              :one :db.cardinality/one
-                                              :many :db.cardinality/many))
+                 (-> {:db/ident k
+                      :db/cardinality (get cardinality-mapping cardinality)
+                      :db/valueType (get type-mapping (case value-family
+                                                        :single v
+                                                        :tuple :tuple))}
                      (cond->
-                         uniqueness-indicator (assoc :db/unique
-                                                     (case uniqueness-indicator
-                                                       :identity :db.unique/identity
-                                                       :unique   :db.unique/value))
+                         (= value-family :tuple) (assoc :db/tupleAttrs (:tuple-composition v))
+                         uniqueness (assoc :db/unique (get uniqueness-mapping uniqueness))
                          doc (assoc :db/doc doc))))))
         (s/conform ::whole m)))
 
