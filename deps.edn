@@ -1,8 +1,9 @@
-;; TODO remove redundancy once I figure out how to launch Cider `jack-in` with the test alias...
-{:paths ["src" "test"]
- :deps {org.clojure/clojure {:mvn/version "1.10.1"}
+{:paths ["src"]
+ :deps {org.clojure/clojure {:mvn/version "1.11.1"}
         org.clojure/spec-alpha2 {:git/url "https://github.com/clojure/spec-alpha2.git"
-                                 :sha "2a0a7c49c86e31b528be857ed004a4931a0c2551"}
-        org.clojure/test.check {:mvn/version "0.10.0"}}
+                                 :sha "99456b1856a6fd934e2c30b17920bd790dd81775"}}
  :aliases {:test {:extra-paths ["test"]
-                  :extra-deps {org.clojure/test.check {:mvn/version "0.10.0"}}}}}
+                  :extra-deps {org.clojure/test.check {:mvn/version "1.1.1"}
+                               io.github.cognitect-labs/test-runner {:git/tag "v0.5.1" :git/sha "dfb30dd"}}
+                  :main-opts ["-m" "cognitect.test-runner"]
+                  :exec-fn cognitect.test-runner.api/test}}}

@@ -1,6 +1,7 @@
 (ns dasl.core-test
-  (:require [dasl.core :as dasl]
-            [clojure.test :refer [deftest is]]))
+  (:require
+    [clojure.test :refer [deftest is]]
+    [dasl.core :as dasl]))
 
 
 (def datomic-doc-tuple-example-vanilla-schema
@@ -69,7 +70,6 @@
    :reg/semester [:one :ref]
    :reg/student  [:one :ref]
    :reg/course+semester+student [:identity :one :tuple [:reg/course :reg/semester :reg/student]]})
-
 
 
 (deftest tuple-schema-example-from-datomic-documentation

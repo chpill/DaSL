@@ -1,24 +1,29 @@
 (ns dasl.core
-  (:require [clojure.spec-alpha2 :as s]))
+  (:require
+    [clojure.alpha.spec :as s]))
 
 
-(defn mapping [ks ns-string]
+(defn mapping
+  [ks ns-string]
   (zipmap ks
-          (mapv #(->> % name (keyword ns-string))
+          (mapv #(keyword ns-string (name %))
                 ks)))
 
 
-(def scalars #{:bigdec
-               :bigint
-               :boolean
-               :double
-               :float
-               :instant
-               :keyword
-               :long
-               :string
-               :symbol
-               :uuid})
+(def scalars
+  #{:bigdec
+    :bigint
+    :boolean
+    :double
+    :float
+    :instant
+    :keyword
+    :long
+    :string
+    :symbol
+    :uuid})
+
+
 (def ref-type :ref)
 (def scalars+ref (conj scalars ref-type))
 (def tuple-type :tuple)
@@ -31,16 +36,22 @@
 (def cardinality-mapping (mapping cardinalities "db.cardinality"))
 
 (def uniquenesses #{:unique :identity})
-(def uniqueness-mapping (mapping uniquenesses "db.unique"))
+
+
+(def uniqueness-mapping
+  {:unique   :db.unique/value
+   :identity :db.unique/identity})
 
 
 (s/def ::namespaced-keyword
   (s/and keyword?
          #(string? (namespace %))))
 
+
 (s/def ::tuple-value-type
   (s/cat :tuple-indicator #{:tuple}
          :tuple-composition (s/coll-of ::namespaced-keyword)))
+
 
 (s/def ::abbreviated-datomic-attribute-schema
   (s/cat :uniqueness (s/? uniquenesses)
@@ -49,17 +60,22 @@
                        :tuple ::tuple-value-type)
          :doc (s/? string?)))
 
-(comment (s/exercise ::abbreviated-datomic-attribute-schema))
+
+(comment (clojure.pprint/pprint (s/exercise ::abbreviated-datomic-attribute-schema)))
+
 
 (comment (s/valid? ::abbreviated-datomic-attribute-schema [:one :tuple [:a/b :c/d]])
          (s/valid? ::abbreviated-datomic-attribute-schema [:identity :one :string "email of the user"])
          (s/valid? ::abbreviated-datomic-attribute-schema [:many :ref "plop"]))
 
+
 (s/def ::whole
   (s/map-of ::namespaced-keyword
             ::abbreviated-datomic-attribute-schema))
 
-(defn expand [m]
+
+(defn expand
+  [m]
   (into #{}
         (map (fn [[k {:keys [uniqueness cardinality value doc]}]]
                (let [[value-family v] value]
@@ -69,11 +85,12 @@
                                                         :single v
                                                         :tuple :tuple))}
                      (cond->
-                         (= value-family :tuple) (assoc :db/tupleAttrs (:tuple-composition v))
-                         uniqueness (assoc :db/unique (get uniqueness-mapping uniqueness))
-                         doc (assoc :db/doc doc))))))
+                       (= value-family :tuple) (assoc :db/tupleAttrs (:tuple-composition v))
+                       uniqueness (assoc :db/unique (get uniqueness-mapping uniqueness))
+                       doc (assoc :db/doc doc))))))
         (s/conform ::whole m)))
 
 
 ;; TODO
-(defn contract [v])
+(defn contract
+  [v])
