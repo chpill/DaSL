@@ -5,23 +5,15 @@
 
 (defn mapping
   [ks ns-string]
-  (zipmap ks
-          (mapv #(keyword ns-string (name %))
-                ks)))
+  (->> (mapv #(keyword ns-string (name %)) ks)
+       (zipmap ks)))
 
 
 (def scalars
-  #{:bigdec
-    :bigint
+  #{:long :float :double :bigdec :bigint
     :boolean
-    :double
-    :float
     :instant
-    :keyword
-    :long
-    :string
-    :symbol
-    :uuid})
+    :keyword :string :symbol :uuid})
 
 
 (def ref-type :ref)
@@ -55,10 +47,11 @@
 
 (s/def ::abbreviated-datomic-attribute-schema
   (s/cat :uniqueness (s/? uniquenesses)
-         :cardinality cardinalities
+         :cardinality (s/? cardinalities)
          :value (s/alt :single scalars+ref
                        :tuple ::tuple-value-type)
          :doc (s/? string?)))
+
 
 
 (comment (clojure.pprint/pprint (s/exercise ::abbreviated-datomic-attribute-schema)))
@@ -80,7 +73,7 @@
         (map (fn [[k {:keys [uniqueness cardinality value doc]}]]
                (let [[value-family v] value]
                  (-> {:db/ident k
-                      :db/cardinality (get cardinality-mapping cardinality)
+                      :db/cardinality (get cardinality-mapping (or cardinality :one))
                       :db/valueType (get type-mapping (case value-family
                                                         :single v
                                                         :tuple :tuple))}
