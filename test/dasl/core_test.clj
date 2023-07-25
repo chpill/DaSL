@@ -1,13 +1,12 @@
 (ns dasl.core-test
-  (:require
-    [clojure.test :refer [deftest is]]
-    [dasl.core :as dasl]))
+  (:require [clojure.test :refer [deftest is]]
+            [dasl.core :as dasl]))
 
 
 (def datomic-doc-tuple-example-vanilla-schema
   "Interesting link to the schema grammar for datomic cloud
    https://docs.datomic.com/cloud/schema/schema-reference.html#orgb6f4748"
-  #{{:db/ident :student/first
+  [{:db/ident :student/first
      :db/valueType :db.type/string
      :db/cardinality :db.cardinality/one}
     {:db/ident :student/last
@@ -51,27 +50,28 @@
      :db/valueType :db.type/tuple
      :db/tupleAttrs [:reg/course :reg/semester :reg/student]
      :db/cardinality :db.cardinality/one
-     :db/unique :db.unique/identity}})
+     :db/unique :db.unique/identity}])
 
 
 (def datomic-doc-tuple-example-schema-with-dasl
-  {:student/email [:identity :one :string]
-   :student/first [:string]
-   :student/last  [:string]
+  [:student/first :string
+   :student/last  :string
+   :student/email :identity :one :string
 
-   :course/id   [:identity :string]
-   :course/name [:string]
+   :semester/year        :long
+   :semester/season      :keyword
+   :semester/year+season :identity :tuple [:semester/year :semester/season]
 
-   :semester/year        [:long]
-   :semester/season      [:keyword]
-   :semester/year+season [:identity :tuple [:semester/year :semester/season]]
+   :course/id   :identity :string
+   :course/name :string
 
-   :reg/course                  [:ref]
-   :reg/semester                [:ref]
-   :reg/student                 [:ref]
-   :reg/course+semester+student [:identity :tuple [:reg/course :reg/semester :reg/student]]})
+   :reg/course                  :ref
+   :reg/semester                :ref
+   :reg/student                 :ref
+   :reg/course+semester+student :identity :tuple [:reg/course :reg/semester :reg/student]])
 
 
 (deftest tuple-schema-example-from-datomic-documentation
   (is (= datomic-doc-tuple-example-vanilla-schema
          (dasl/expand datomic-doc-tuple-example-schema-with-dasl))))
+

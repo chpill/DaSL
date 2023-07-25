@@ -63,14 +63,23 @@
 
 
 (s/def ::whole
-  (s/map-of ::namespaced-keyword
+  (s/* (s/cat :k ::namespaced-keyword :v ::abbreviated-datomic-attribute-schema))
+  #_(s/map-of ::namespaced-keyword
             ::abbreviated-datomic-attribute-schema))
 
+(comment
+  (s/conform ::whole [:a/b :string
+                      :c/d :many :ref])
+
+  (s/explain ::whole [:a/b [:string]])
+
+  )
 
 (defn expand
   [m]
-  (into #{}
-        (map (fn [[k {:keys [uniqueness cardinality value doc]}]]
+  (into []
+        (map (fn [{k :k
+                   {:keys [uniqueness cardinality value doc]} :v}]
                (let [[value-family v] value]
                  (-> {:db/ident k
                       :db/cardinality (get cardinality-mapping (or cardinality :one))
@@ -83,6 +92,9 @@
                        doc (assoc :db/doc doc))))))
         (s/conform ::whole m)))
 
+
+(comment (expand [:a/b :string
+                  :c/d :many :ref]))
 
 ;; TODO
 (defn contract
